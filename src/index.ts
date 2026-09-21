@@ -60,3 +60,4 @@ async function handleChatRequest(
 		const body = (await request.json()) as ChatRequest;
 
 		let messages: ChatMessage[] = Array.isArray(body.
+
