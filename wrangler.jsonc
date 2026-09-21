@@ -16,7 +16,7 @@
 		"enabled": true
 	},
 	"ai": {
-		"binding": "AI"
-	},
+  "binding": "ai_dragon"
+}
 	"upload_source_maps": true
 }
