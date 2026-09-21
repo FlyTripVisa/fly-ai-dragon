@@ -5,8 +5,7 @@
 		"label": "LLM Chat App",
 		"products": [
 			"Workers",
-			"Workers AI",
-			"AI Gateway"
+			"Workers AI"
 		],
 		"categories": [
 			"ai"
