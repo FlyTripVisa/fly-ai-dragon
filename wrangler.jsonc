@@ -28,12 +28,13 @@
 		{
 			"binding": "flytripvisa_r2",
 			"bucket_name": "flytripvisa"
+		},
+		{
+			"binding": "AI_CHAT_BUCKET",
+			"bucket_name": "ai-chat"
 		}
 	],
-"r2_buckets": [
-    { "binding": "R2", "bucket_name": "flytripvisa" },
-    { "binding": "AI_CHAT_BUCKET", "bucket_name": "ai-chat" }
-], 
+
 	"d1_databases": [
 		{
 			"binding": "flytripvisa_db",
@@ -45,14 +46,6 @@
 		{
 			"binding": "dragon",
 			"namespace": "default"
-		}
-	],
-
-	"services": [
-		{
-			"binding": "Service",
-			"service": "fly-ai-dragon",
-			"environment": "production"
 		}
 	],
 
