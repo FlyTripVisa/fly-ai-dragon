@@ -30,7 +30,10 @@
 			"bucket_name": "flytripvisa"
 		}
 	],
-
+"r2_buckets": [
+    { "binding": "R2", "bucket_name": "flytripvisa" },
+    { "binding": "AI_CHAT_BUCKET", "bucket_name": "ai-chat" }
+], 
 	"d1_databases": [
 		{
 			"binding": "flytripvisa_db",
@@ -78,7 +81,3 @@
 
 	"upload_source_maps": true
 }
-"r2_buckets": [
-    { "binding": "R2", "bucket_name": "flytripvisa" },
-    { "binding": "AI_CHAT_BUCKET", "bucket_name": "ai-chat" }
-]}
