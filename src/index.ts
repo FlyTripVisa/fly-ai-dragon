@@ -1,11 +1,12 @@
 /**
  * Fly Dragon AI
- * Real-time Kimi AI chat using Cloudflare Workers AI
+ * Real-time AI chat using Cloudflare Workers AI
  */
 
 import type { Env, ChatMessage, ChatRequest } from "./types";
 
-const MODEL_ID = "@cf/moonshotai/kimi-k2.7-code";
+// Cloudflare Workers AI default Llama model
+const MODEL_ID = "@cf/meta/llama-3.1-8b-instruct-fp8";
 
 const SYSTEM_PROMPT = `
 You are Fly Dragon AI, a helpful and friendly AI assistant.
@@ -37,7 +38,7 @@ export default {
 				return new Response("Method Not Allowed", {
 					status: 405,
 					headers: {
-						"Allow": "POST",
+						Allow: "POST",
 					},
 				});
 			}
@@ -62,7 +63,7 @@ async function handleChatRequest(
 			? body.messages
 			: [];
 
-		// Remove any system messages supplied by the browser.
+		// Never trust system messages from the browser.
 		messages = messages.filter(
 			(message) => message.role !== "system",
 		);
@@ -76,10 +77,10 @@ async function handleChatRequest(
 				message.content.trim().length > 0,
 		);
 
-		// Keep the request reasonably small.
+		// Keep recent conversation history only.
 		messages = messages.slice(-40);
 
-		// System prompt + conversation history.
+		// Add Fly Dragon system instructions.
 		const aiMessages: ChatMessage[] = [
 			{
 				role: "system",
@@ -94,13 +95,7 @@ async function handleChatRequest(
 			stream: true,
 		} satisfies AiTextGenerationInput & { stream: true };
 
-		/**
-		 * Direct Workers AI request.
-		 *
-		 * IMPORTANT:
-		 * No AI Gateway is used here.
-		 * No Kimi API key is required here.
-		 */
+		// Direct Cloudflare Workers AI.
 		const stream = await env.AI.run<typeof MODEL_ID>(
 			MODEL_ID,
 			inputs,
@@ -132,10 +127,11 @@ async function handleChatRequest(
 				details,
 			}),
 			{
-				status: 1000,
+				status: 500,
 				headers: {
 					"Content-Type": "application/json",
 					"Cache-Control": "no-store",
+					"Access-Control-Allow-Origin": "*",
 				},
 			},
 		);
