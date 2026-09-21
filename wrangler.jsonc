@@ -78,3 +78,7 @@
 
 	"upload_source_maps": true
 }
+"r2_buckets": [
+    { "binding": "R2", "bucket_name": "flytripvisa" },
+    { "binding": "AI_CHAT_BUCKET", "bucket_name": "ai-chat" }
+]}
