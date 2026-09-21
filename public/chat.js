@@ -1,3 +1,8 @@
+/**
+ * Fly Dragon AI
+ * Real-time streaming chat client
+ */
+
 (() => {
   "use strict";
 
@@ -15,24 +20,16 @@
   let conversation = [];
   let isStreaming = false;
 
-  /* =========================
-     INITIALIZE
-  ========================== */
-
   function init() {
     loadHistory();
     setupEvents();
     autoResize();
 
-    if (conversation.length > 0) {
+    if (conversation.length) {
       hideWelcome();
       renderHistory();
     }
   }
-
-  /* =========================
-     EVENTS
-  ========================== */
 
   function setupEvents() {
     chatForm.addEventListener("submit", async (event) => {
@@ -50,7 +47,10 @@
     messageInput.addEventListener("input", autoResize);
 
     messageInput.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" && !event.shiftKey) {
+      if (
+        event.key === "Enter" &&
+        !event.shiftKey
+      ) {
         event.preventDefault();
 
         if (!isStreaming) {
@@ -59,22 +59,20 @@
       }
     });
 
-    newChatButton.addEventListener("click", newChat);
+    if (newChatButton) {
+      newChatButton.addEventListener("click", newChat);
+    }
 
     document.querySelectorAll("[data-prompt]").forEach((button) => {
       button.addEventListener("click", () => {
-        const prompt = button.dataset.prompt || "";
+        messageInput.value =
+          button.dataset.prompt || "";
 
-        messageInput.value = prompt;
         autoResize();
         messageInput.focus();
       });
     });
   }
-
-  /* =========================
-     SEND MESSAGE
-  ========================== */
 
   async function sendMessage(text) {
     if (isStreaming) return;
@@ -88,7 +86,7 @@
 
     conversation.push({
       role: "user",
-      content: text,
+      content: text
     });
 
     saveHistory();
@@ -96,155 +94,152 @@
     messageInput.value = "";
     autoResize();
 
-    const assistantMessage = createMessageElement("assistant");
+    const assistant = createMessageElement("assistant");
 
-    messages.appendChild(assistantMessage.container);
+    messages.appendChild(assistant.container);
 
-    const contentElement = assistantMessage.content;
+    const contentElement = assistant.content;
+
+    let assistantText = "";
 
     try {
-      const response = await fetch("/api/chat", {
+      const response = await fetch("api/chat", {
         method: "POST",
 
         headers: {
           "Content-Type": "application/json",
-          Accept: "text/event-stream",
+          "Accept": "text/event-stream"
         },
 
         body: JSON.stringify({
-          messages: conversation,
-        }),
+          messages: conversation
+        })
       });
 
       if (!response.ok) {
-        const errorText = await response.text().catch(() => "");
+        const errorText =
+          await response.text().catch(() => "");
 
         throw new Error(
           errorText ||
-            `Request failed with status ${response.status}`
+          `HTTP ${response.status}`
         );
       }
 
       if (!response.body) {
-        throw new Error("Streaming response is not available.");
+        throw new Error(
+          "Streaming is not supported by this response."
+        );
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder("utf-8");
+      const reader =
+        response.body.getReader();
+
+      const decoder =
+        new TextDecoder("utf-8");
 
       let buffer = "";
-      let assistantText = "";
 
       while (true) {
-        const { value, done } = await reader.read();
+        const { value, done } =
+          await reader.read();
 
         if (done) break;
 
-        buffer += decoder.decode(value, {
-          stream: true,
-        });
+        buffer += decoder.decode(
+          value,
+          { stream: true }
+        );
 
-        const parsed = processSSEBuffer(buffer);
+        const parts =
+          buffer.split(/\r?\n\r?\n/);
 
-        buffer = parsed.remaining;
+        buffer = parts.pop() || "";
 
-        for (const event of parsed.events) {
-          const token = extractToken(event);
+        for (const event of parts) {
+          const token =
+            extractToken(event);
 
-          if (token === null) {
-            continue;
-          }
-
-          if (token === "[DONE]") {
+          if (
+            token === null ||
+            token === "[DONE]"
+          ) {
             continue;
           }
 
           assistantText += token;
 
-          contentElement.textContent = assistantText;
+          // REAL-TIME UI UPDATE
+          contentElement.textContent =
+            assistantText;
 
           scrollToBottom();
         }
       }
 
+      // Flush decoder
+      buffer += decoder.decode();
+
       if (buffer.trim()) {
-        const finalEvents = processSSEBuffer(buffer);
+        const token =
+          extractToken(buffer);
 
-        for (const event of finalEvents.events) {
-          const token = extractToken(event);
+        if (
+          token &&
+          token !== "[DONE]"
+        ) {
+          assistantText += token;
 
-          if (token !== null && token !== "[DONE]") {
-            assistantText += token;
-          }
+          contentElement.textContent =
+            assistantText;
         }
       }
 
       if (!assistantText.trim()) {
-        assistantText =
-          "I couldn't generate a response right now. Please try again.";
+        throw new Error(
+          "AI returned an empty response."
+        );
       }
-
-      contentElement.textContent = assistantText;
 
       conversation.push({
         role: "assistant",
-        content: assistantText,
+        content: assistantText
       });
 
       saveHistory();
       scrollToBottom();
 
     } catch (error) {
-      console.error("Fly Dragon AI error:", error);
+      console.error(
+        "Fly Dragon AI error:",
+        error
+      );
 
-      const errorMessage =
+      const message =
         error instanceof Error
           ? error.message
           : "Something went wrong.";
 
       contentElement.textContent =
-        `Sorry, I couldn't process your request.\n\n${errorMessage}`;
-
-    } finally {
-      isStreaming = false;
-      setLoading(false);
-      messageInput.focus();
-    }
-  }
-
-  /* =========================
-     SSE PARSER
-  ========================== */
-
-  function processSSEBuffer(buffer) {
-    const events = [];
-
-    const normalized = buffer.replace(/\r\n/g, "\n");
-
-    const chunks = normalized.split("\n\n");
-
-    const remaining = chunks.pop() || "";
-
-    for (const chunk of chunks) {
-      if (!chunk.trim()) continue;
-
-      events.push(chunk);
+        `Sorry, I couldn't process your request.\n\n${message}`;
     }
 
-    return {
-      events,
-      remaining,
-    };
+    isStreaming = false;
+    setLoading(false);
+    messageInput.focus();
   }
 
   function extractToken(event) {
-    const lines = event.split("\n");
+    const lines =
+      event.split(/\r?\n/);
 
     const dataLines = [];
 
     for (const line of lines) {
       if (line.startsWith("data:")) {
-        dataLines.push(line.slice(5).trimStart());
+        dataLines.push(
+          line.slice(5).trimStart()
+        );
       }
     }
 
@@ -252,93 +247,89 @@
       return null;
     }
 
-    const data = dataLines.join("\n");
+    const data =
+      dataLines.join("\n");
 
     if (data === "[DONE]") {
       return "[DONE]";
     }
 
-    /*
-     * Supports both:
-     *
-     * data: plain text
-     *
-     * and:
-     *
-     * data: {"response":"hello"}
-     * data: {"text":"hello"}
-     * data: {"content":"hello"}
-     */
-
     try {
-      const parsed = JSON.parse(data);
+      const parsed =
+        JSON.parse(data);
 
       if (typeof parsed === "string") {
         return parsed;
       }
 
-      if (typeof parsed.response === "string") {
+      if (
+        typeof parsed.response === "string"
+      ) {
         return parsed.response;
       }
 
-      if (typeof parsed.text === "string") {
+      if (
+        typeof parsed.text === "string"
+      ) {
         return parsed.text;
       }
 
-      if (typeof parsed.content === "string") {
+      if (
+        typeof parsed.content === "string"
+      ) {
         return parsed.content;
       }
 
-      if (typeof parsed.token === "string") {
-        return parsed.token;
-      }
-
       if (
-        parsed.response &&
-        typeof parsed.response === "object" &&
-        typeof parsed.response.text === "string"
+        typeof parsed.token === "string"
       ) {
-        return parsed.response.text;
+        return parsed.token;
       }
 
       return null;
 
     } catch {
+      // Cloudflare may send plain text chunks
       return data;
     }
   }
 
-  /* =========================
-     MESSAGE UI
-  ========================== */
-
   function addMessage(role, text) {
-    const element = createMessageElement(role);
+    const element =
+      createMessageElement(role);
 
     element.content.textContent = text;
 
-    messages.appendChild(element.container);
+    messages.appendChild(
+      element.container
+    );
 
     scrollToBottom();
   }
 
   function createMessageElement(role) {
-    const container = document.createElement("div");
+    const container =
+      document.createElement("div");
 
-    container.className = `message ${role}`;
+    container.className =
+      `message ${role}`;
 
-    const avatar = document.createElement("div");
+    const avatar =
+      document.createElement("div");
 
-    avatar.className = "message-avatar";
+    avatar.className =
+      "message-avatar";
 
     avatar.textContent =
       role === "assistant"
         ? "F"
         : "You";
 
-    const content = document.createElement("div");
+    const content =
+      document.createElement("div");
 
-    content.className = "message-content";
+    content.className =
+      "message-content";
 
     if (role === "assistant") {
       container.appendChild(avatar);
@@ -350,13 +341,9 @@
 
     return {
       container,
-      content,
+      content
     };
   }
-
-  /* =========================
-     HISTORY
-  ========================== */
 
   function saveHistory() {
     try {
@@ -365,30 +352,44 @@
         JSON.stringify(conversation)
       );
     } catch (error) {
-      console.warn("Could not save chat history:", error);
+      console.warn(
+        "Could not save history:",
+        error
+      );
     }
   }
 
   function loadHistory() {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved =
+        localStorage.getItem(
+          STORAGE_KEY
+        );
 
       if (!saved) return;
 
-      const parsed = JSON.parse(saved);
+      const parsed =
+        JSON.parse(saved);
 
       if (!Array.isArray(parsed)) return;
 
-      conversation = parsed.filter(
-        (message) =>
-          message &&
-          (message.role === "user" ||
-            message.role === "assistant") &&
-          typeof message.content === "string"
-      );
+      conversation =
+        parsed.filter(
+          (message) =>
+            message &&
+            (
+              message.role === "user" ||
+              message.role === "assistant"
+            ) &&
+            typeof message.content ===
+              "string"
+        );
 
     } catch (error) {
-      console.warn("Could not load chat history:", error);
+      console.warn(
+        "Could not load history:",
+        error
+      );
 
       conversation = [];
     }
@@ -405,19 +406,20 @@
     }
   }
 
-  /* =========================
-     NEW CHAT
-  ========================== */
-
   function newChat() {
     if (isStreaming) return;
 
     conversation = [];
 
     try {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(
+        STORAGE_KEY
+      );
     } catch (error) {
-      console.warn("Could not clear chat history:", error);
+      console.warn(
+        "Could not clear history:",
+        error
+      );
     }
 
     messages.innerHTML = "";
@@ -428,15 +430,9 @@
     messageInput.value = "";
 
     autoResize();
-
     messageInput.focus();
-
     scrollToBottom();
   }
-
-  /* =========================
-     UI STATE
-  ========================== */
 
   function hideWelcome() {
     welcome.classList.add("hidden");
@@ -448,9 +444,14 @@
     messageInput.disabled = loading;
 
     if (loading) {
-      sendButton.setAttribute("aria-busy", "true");
+      sendButton.setAttribute(
+        "aria-busy",
+        "true"
+      );
     } else {
-      sendButton.removeAttribute("aria-busy");
+      sendButton.removeAttribute(
+        "aria-busy"
+      );
     }
   }
 
@@ -462,18 +463,16 @@
       140
     );
 
-    messageInput.style.height = `${height}px`;
+    messageInput.style.height =
+      `${height}px`;
   }
 
   function scrollToBottom() {
     requestAnimationFrame(() => {
-      chatArea.scrollTop = chatArea.scrollHeight;
+      chatArea.scrollTop =
+        chatArea.scrollHeight;
     });
   }
-
-  /* =========================
-     START
-  ========================== */
 
   init();
 })();
