@@ -1,22 +1,80 @@
-/**
- * For more details on how to configure Wrangler, refer to:
- * https://developers.cloudflare.com/workers/wrangler/configuration/
- */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "fly-ai-dragon",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-10-08",
-	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"compatibility_flags": [
+		"nodejs_compat",
+		"global_fetch_strictly_public"
+	],
+
 	"assets": {
 		"binding": "ASSETS",
 		"directory": "./public"
 	},
-	"observability": {
-		"enabled": true
-	},
+
 	"ai": {
-  "binding": "ai_dragon"
-}
+		"binding": "AI"
+	},
+
+	"kv_namespaces": [
+		{
+			"binding": "flytripvisa_kv",
+			"id": "55384fd25e174d69ad17b3cb1b576ab7"
+		}
+	],
+
+	"r2_buckets": [
+		{
+			"binding": "flytripvisa_r2",
+			"bucket_name": "flytripvisa"
+		}
+	],
+
+	"d1_databases": [
+		{
+			"binding": "flytripvisa_db",
+			"database_id": "f274effd-ff6e-4c75-b8a8-4083726232fe"
+		}
+	],
+
+	"ai_search": [
+		{
+			"binding": "dragon",
+			"namespace": "default"
+		}
+	],
+
+	"services": [
+		{
+			"binding": "Service",
+			"service": "fly-ai-dragon",
+			"environment": "production"
+		}
+	],
+
+	"browser": {
+		"binding": "Browser"
+	},
+
+	"images": {
+		"binding": "Images"
+	},
+
+	"version_metadata": {
+		"binding": "Version"
+	},
+
+	"send_email": [
+		{
+			"name": "flytripvisa_flytripvisa"
+		}
+	],
+
+	"observability": {
+		"enabled": true,
+		"redact_query_string": false
+	},
+
 	"upload_source_maps": true
-}
+};
